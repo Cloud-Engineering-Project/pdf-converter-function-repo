@@ -1,0 +1,41 @@
+name: Deploy PDF Converter Function
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  repository_dispatch:
+
+env:
+  REGION: me-central1
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Cloud Function
+        run: |
+          gcloud functions deploy pdf-converter-function \
+            --gen2 \
+            --region=$REGION \
+            --project=$PROJECT_ID \
+            --runtime=python311 \
+            --source=. \
+            --entry-point=pdf_converter \
+            --trigger-topic=file-uploaded-pdf \
+            --service-account=${{ secrets.RUNTIME_SERVICE_ACCOUNT }} \
+            --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},CONVERTED_BUCKET=${{ secrets.CONVERTED_BUCKET }},FILE_CONVERTED_TOPIC=file-converted
